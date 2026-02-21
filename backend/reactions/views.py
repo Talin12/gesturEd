@@ -1,18 +1,6 @@
-# reactions/views.py
-# This file is inside your `reactions` app folder. REPLACE the existing reactions/views.py with this.
-
 import json
 
 from django.http import JsonResponse, StreamingHttpResponse
-<<<<<<< HEAD
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-
-from .opencv_handler import generate_frames
-
-from django.http import JsonResponse
-=======
->>>>>>> f45646c (opency handler add)
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
@@ -65,10 +53,6 @@ def current_reaction_view(request):
     return JsonResponse({
         "active_reaction": active_reaction,
         "is_running": active_reaction is not None,
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> f45646c (opency handler add)
     })
 
 
@@ -86,12 +70,4 @@ def video_feed_view(request):
 
     return StreamingHttpResponse(
         generate_frames(active_reaction),
-        content_type="multipart/x-mixed-replace; boundary=frame",
-<<<<<<< HEAD
-    )
-=======
-    })
->>>>>>> cbd2dd0 (reaction views)
-=======
-    )
->>>>>>> f45646c (opency handler add)
+        content_type="multipart/x-mixed-replace; boundary=frame",)
