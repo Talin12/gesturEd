@@ -1,9 +1,8 @@
-// src/api.js
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:8000/api',
-    withCredentials: true, // CRITICAL: sends Django session cookie cross-origin
+    baseURL: '/api', // CHANGED: Vite will now route this to localhost:8000/api
+    withCredentials: true, 
 });
 
 export default api;

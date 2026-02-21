@@ -1,6 +1,5 @@
 // src/components/Lab.jsx
-// Place in: frontend/src/components/Lab.jsx
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
@@ -107,28 +106,44 @@ export default function Lab() {
   const navigate = useNavigate();
   const stopCalled = useRef(false); // prevent double-call on strict mode remount
 
-  const handleBack = async () => {
+  const handleBack = () => {
     if (stopCalled.current) return;
     stopCalled.current = true;
-    try {
-      await api.post('/reactions/stop/');
-    } finally {
-      navigate('/dashboard');
-    }
+    
+    // 1. Tell the backend to stop the stream and clear the session
+    api.post('/reactions/stop/')
+        .then(() => {
+            // 2. Navigate back to the dashboard upon success
+            navigate('/dashboard');
+        })
+        .catch((err) => {
+            console.error("Error stopping reaction:", err);
+            // Fallback: forcefully navigate back even if the API fails so the user isn't trapped
+            navigate('/dashboard'); 
+        });
   };
 
   // Stop the reaction if the user closes/refreshes the tab
   useEffect(() => {
     const handleUnload = () => {
-      // navigator.sendBeacon is fire-and-forget — works on tab close
-      navigator.sendBeacon(
-        'http://localhost:8000/api/reactions/stop/',
-        new Blob([JSON.stringify({})], { type: 'application/json' })
-      );
+      // navigator.sendBeacon does not easily send cross-origin credentials.
+      // fetch with keepalive: true ensures the Django session cookie is sent on tab close.
+      fetch('http://localhost:8000/api/reactions/stop/', {
+        method: 'POST',
+        keepalive: true, 
+        credentials: 'include', 
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+      }).catch(err => console.error("Unload error:", err));
     };
+    
     window.addEventListener('beforeunload', handleUnload);
+    
     return () => {
       window.removeEventListener('beforeunload', handleUnload);
+      
       // Also stop on React unmount (e.g. browser back button)
       if (!stopCalled.current) {
         stopCalled.current = true;
@@ -164,8 +179,7 @@ export default function Lab() {
           image requests (port 5173 → 8000), and Django returns 401.
         */}
         <img
-          src="http://localhost:8000/api/reactions/video-feed/"
-          crossOrigin="use-credentials"
+          src="/api/reactions/video-feed/"
           alt="Virtual Lab Stream"
           style={styles.stream}
         />
