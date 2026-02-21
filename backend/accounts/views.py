@@ -1,6 +1,7 @@
-import json
+# accounts/views.py
+# This file is inside your `accounts` app folder. REPLACE the existing accounts/views.py with this.
 
-from django.contrib.auth import authenticate, login, logout
+import json
 from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
