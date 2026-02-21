@@ -36,10 +36,6 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-<<<<<<< HEAD
-=======
-    'django.middleware.csrf.CsrfViewMiddleware',
->>>>>>> 9d9787f (Initial commit: Added my workspace folder)
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -112,7 +108,6 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-<<<<<<< HEAD
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",   
 ]
@@ -120,6 +115,3 @@ CORS_ALLOW_CREDENTIALS = True
 
 SESSION_COOKIE_SAMESITE = "Lax" 
 SESSION_COOKIE_SECURE = False
-=======
-CORS_ALLOW_ALL_ORIGINS = True
->>>>>>> 9d9787f (Initial commit: Added my workspace folder)
