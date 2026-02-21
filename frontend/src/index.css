@@ -1,0 +1,58 @@
+/* src/index.css */
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Outfit:wght@300;400;600;700&display=swap');
+
+:root {
+  --bg: #080c10;
+  --surface: #0d1520;
+  --surface2: #111e2e;
+  --border: rgba(56, 189, 248, 0.15);
+  --accent-blue: #38bdf8;
+  --accent-red: #f87171;
+  --accent-green: #4ade80;
+  --text-primary: #e2eaf4;
+  --text-muted: #5a7a99;
+  --mono: 'Share Tech Mono', monospace;
+  --sans: 'Outfit', sans-serif;
+  --glow-blue: 0 0 20px rgba(56, 189, 248, 0.3);
+  --glow-red: 0 0 20px rgba(248, 113, 113, 0.3);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--sans);
+}
+
+body {
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(56, 189, 248, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(99, 102, 241, 0.04) 0%, transparent 60%);
+}
+
+/* Scanline texture */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  z-index: 9999;
+}
+
+button {
+  cursor: pointer;
+  font-family: var(--sans);
+}
+
+input {
+  font-family: var(--sans);
+}
