@@ -15,4 +15,6 @@ opencv_modules/__pycache__/
 __pycache__/
 *.pyc
 *.so
+frontend/package-lock.json
+backend/apu
 # End of https://www.toptal.com/developers/gitignore/api/opencv
