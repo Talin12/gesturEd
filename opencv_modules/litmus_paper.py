@@ -21,24 +21,27 @@ class LitmusPaper:
         self.hit_y = 0
 
     def receive_liquid(self, drop_x, drop_y, liquid_color):
-        """Call this when a drop lands on the paper"""
-        # Only react if drop is within paper bounds
         if self.x < drop_x < self.x + self.width and self.y < drop_y < self.y + self.height:
             self.wet_spots.append({
                 'x': drop_x,
                 'y': drop_y,
                 'radius': 2,
-                'max_radius': 18,
+                'max_radius': 22,
                 'color': liquid_color,
                 'alpha': 1.0
             })
-            # Change paper color toward liquid color (acid = red, base = blue)
+            # Much stronger color shift — 40% per hit instead of 15%
             for i in range(3):
                 self.target_color[i] = int(
-                    self.target_color[i] * 0.85 + liquid_color[i] * 0.15
+                    self.target_color[i] * 0.6 + liquid_color[i] * 0.4
                 )
 
     def draw(self, frame):
+        # Faster lerp toward target color so change is visible immediately
+        for i in range(3):
+            self.current_color[i] += int(
+                (self.target_color[i] - self.current_color[i]) * 0.15
+            )
         self._draw_paper_3d(frame)
         self._draw_wet_spots(frame)
         self._draw_paper_lines(frame)
