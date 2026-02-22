@@ -213,16 +213,16 @@ const s = {
 };
 
 export default function Lab() {
-  const navigate  = useNavigate();
+  const navigate   = useNavigate();
   const stopCalled = useRef(false);
   const pollRef    = useRef(null);
 
-  const [chemicals, setChemicals]           = useState([]);
-  const [activeId, setActiveId]             = useState(null);
-  const [activeMeta, setActiveMeta]         = useState(null);
-  const [loadingChem, setLoadingChem]       = useState(null);
-  const [revealData, setRevealData]         = useState(null);
-  const [reactionType, setReactionType]     = useState(null);
+  const [chemicals, setChemicals]       = useState([]);
+  const [activeId, setActiveId]         = useState(null);
+  const [activeMeta, setActiveMeta]     = useState(null);
+  const [loadingChem, setLoadingChem]   = useState(null);
+  const [revealData, setRevealData]     = useState(null);
+  const [reactionType, setReactionType] = useState(null);
 
   useEffect(() => {
     api.get('/reactions/chemicals/')
@@ -275,7 +275,7 @@ export default function Lab() {
   useEffect(() => {
     const onUnload = () =>
       navigator.sendBeacon(
-        'http://localhost:8000/api/reactions/stop/',
+        '/api/reactions/stop/',
         new Blob([JSON.stringify({})], { type: 'application/json' }),
       );
     window.addEventListener('beforeunload', onUnload);
@@ -331,12 +331,15 @@ export default function Lab() {
             {activeId ? `// loaded: ${activeId}` : '// webcam feed — select a substance'}
           </span>
         </div>
+        {/* Relative path routes through Vite proxy — no auth, no CORS */}
         <img
-          src={`${api.defaults.baseURL}/reactions/video-feed/`}
-          crossOrigin="use-credentials"
+          src="http://192.168.6.175:8000/api/reactions/video-feed/"
           alt="Virtual Lab Stream"
           style={s.stream}
         />
+
+
+
       </div>
 
       {revealData && (

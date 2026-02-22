@@ -35,19 +35,28 @@ def _run_lab():
     global _latest_frame
     from django.core.cache import cache
 
-    camera = cv2.VideoCapture(0)
-    if not camera.isOpened():
-        camera = cv2.VideoCapture(1)
-    if not camera.isOpened():
-        camera = cv2.VideoCapture(2)
-        
-    if not camera.isOpened():
+    print("DEBUG: _run_lab started")
+
+    # Try cameras 0, 1, 2
+    camera = None
+    for idx in range(3):
+        print(f"DEBUG: Trying camera index {idx}")
+        cap = cv2.VideoCapture(idx)
+        if cap.isOpened():
+            camera = cap
+            print(f"DEBUG: Camera opened at index {idx}")
+            break
+        cap.release()
+
+    if camera is None or not camera.isOpened():
+        print("DEBUG: ERROR — no camera found")
         error_frame = np.zeros((480, 640, 3), dtype=np.uint8)
-        cv2.putText(error_frame, "CAMERA ERROR / ACCESS DENIED", (50, 240), 
+        cv2.putText(error_frame, "CAMERA ERROR / ACCESS DENIED", (50, 240),
                     cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 255), 2)
         _, buffer = cv2.imencode(".jpg", error_frame)
         with _frame_lock:
             _latest_frame = buffer.tobytes()
+        print(f"DEBUG: Error frame written ({len(_latest_frame)} bytes)")
         return
 
     camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
@@ -66,10 +75,15 @@ def _run_lab():
     paper.current_color = list(init_color)
     paper.target_color = list(init_color)
 
+    frame_count = 0
+
     try:
         while state.get("running", False):
             success, frame = camera.read()
+            print(f"DEBUG: camera.read() success={success}, frame_count={frame_count}")
+
             if not success:
+                print("DEBUG: camera.read() failed — breaking loop")
                 break
 
             frame = cv2.flip(frame, 1)
@@ -134,10 +148,16 @@ def _run_lab():
             with _frame_lock:
                 _latest_frame = buffer.tobytes()
 
+            frame_count += 1
+            if frame_count % 30 == 0:
+                print(f"DEBUG: {frame_count} frames written, latest={len(_latest_frame)} bytes")
+
     finally:
+        print(f"DEBUG: _run_lab ending after {frame_count} frames")
         camera.release()
         with _frame_lock:
             _latest_frame = None
+
 
 def start_lab():
     global _lab_thread
@@ -145,6 +165,11 @@ def start_lab():
     if _lab_thread is None or not _lab_thread.is_alive():
         _lab_thread = threading.Thread(target=_run_lab, daemon=True)
         _lab_thread.start()
+        print("DEBUG: lab thread started")
+    else:
+        print("DEBUG: lab thread already running")
+
 
 def stop_lab():
     state["running"] = False
+    print("DEBUG: stop_lab called")
