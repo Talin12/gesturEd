@@ -1,6 +1,7 @@
+# backend/reactions/views.py
+
 import time
 
-from django.core.cache import cache
 from django.http import JsonResponse, StreamingHttpResponse
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -24,16 +25,10 @@ CHEMICALS = {
     "SugarSol":   {"label": "Sugar Solution",       "type": "neutral", "formula": "C₁₂H₂₂O₁₁(aq)"},
 }
 
-CACHE_KEY_CHEMICAL      = "active_chemical_type"
-CACHE_KEY_CHEMICAL_META = "active_chemical_meta"
-CACHE_KEY_REACTION_DONE = "reaction_complete_flag"
-CACHE_TIMEOUT           = 3600
-
-DEMO_SESSION_ID = "hackathon_demo"
-
 
 def _mjpeg_generator():
-    while True:
+    # Loop only while the lab is running — exits gracefully when stop_lab() is called
+    while stream_state.state.get("running", False):
         frame = get_latest_frame()
         if frame is None:
             time.sleep(0.03)
@@ -55,12 +50,9 @@ def start_reaction_view(request):
         return Response({"error": "Invalid reaction_type."}, status=400)
 
     stream_state.set_reaction(reaction_type)
-    stream_state.state["chemical_id"]   = None
-    stream_state.state["chemical_type"] = "neutral"
-
-    cache.delete(CACHE_KEY_CHEMICAL)
-    cache.delete(CACHE_KEY_CHEMICAL_META)
-    cache.set(CACHE_KEY_REACTION_DONE, False, timeout=CACHE_TIMEOUT)
+    stream_state.state["chemical_id"]            = None
+    stream_state.state["chemical_type"]          = "neutral"
+    stream_state.state["reaction_complete_flag"] = False
 
     start_lab()
 
@@ -71,25 +63,22 @@ def start_reaction_view(request):
 def stop_reaction_view(request):
     stop_lab()
 
-    stream_state.state["reaction_type"]  = None
-    stream_state.state["chemical_id"]    = None
-    stream_state.state["chemical_type"]  = "neutral"
-    cache.delete(CACHE_KEY_CHEMICAL)
-    cache.delete(CACHE_KEY_CHEMICAL_META)
-    cache.set(CACHE_KEY_REACTION_DONE, False, timeout=CACHE_TIMEOUT)
+    stream_state.state["reaction_type"]          = None
+    stream_state.state["chemical_id"]            = None
+    stream_state.state["chemical_type"]          = "neutral"
+    stream_state.state["reaction_complete_flag"] = False
 
     return Response({"message": "Reaction stopped."})
 
 
 @api_view(['GET'])
 def current_reaction_view(request):
-    active = cache.get("active_reaction_type")
+    active = stream_state.state.get("reaction_type")
     return Response({"active_reaction": active, "is_running": active is not None})
 
 
 def video_feed_view(request):
     # Plain Django view — StreamingHttpResponse doesn't work with DRF's Response
-    # No auth check — hackathon mode
     return StreamingHttpResponse(
         _mjpeg_generator(),
         content_type="multipart/x-mixed-replace; boundary=frame",
@@ -113,12 +102,7 @@ def set_chemical_view(request):
 
     meta = CHEMICALS[chemical_id]
     stream_state.set_chemical(chemical_id)
-    cache.set(CACHE_KEY_CHEMICAL,      meta["type"], timeout=CACHE_TIMEOUT)
-    cache.set(CACHE_KEY_CHEMICAL_META, {
-        "id": chemical_id, "label": meta["label"],
-        "type": meta["type"], "formula": meta["formula"],
-    }, timeout=CACHE_TIMEOUT)
-    cache.set(CACHE_KEY_REACTION_DONE, False, timeout=CACHE_TIMEOUT)
+    stream_state.state["reaction_complete_flag"] = False
 
     return Response({
         "message": f"Chemical set to {chemical_id}.",
@@ -133,8 +117,17 @@ def set_chemical_view(request):
 
 @api_view(['GET'])
 def status_view(request):
+    chemical_id = stream_state.state.get("chemical_id")
+    chemical_meta = None
+    if chemical_id and chemical_id in CHEMICALS:
+        m = CHEMICALS[chemical_id]
+        chemical_meta = {
+            "id": chemical_id, "label": m["label"],
+            "type": m["type"], "formula": m["formula"],
+        }
+
     return Response({
-        "complete":      cache.get(CACHE_KEY_REACTION_DONE, False),
-        "chemical":      cache.get(CACHE_KEY_CHEMICAL_META),
-        "reaction_type": cache.get("active_reaction_type"),
+        "complete":      stream_state.state.get("reaction_complete_flag", False),
+        "chemical":      chemical_meta,
+        "reaction_type": stream_state.state.get("reaction_type"),
     })

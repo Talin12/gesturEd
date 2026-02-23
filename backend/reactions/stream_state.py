@@ -1,5 +1,4 @@
-# reactions/stream_state.py
-# Place in: backend/reactions/stream_state.py — REPLACE existing file entirely.
+# backend/reactions/stream_state.py
 
 CHEMICALS = {
     "HCl":        {"type": "acid",    "label": "Hydrochloric Acid"},
@@ -18,10 +17,11 @@ CHEMICALS = {
 }
 
 state = {
-    "chemical_id":   None,
-    "chemical_type": "neutral",
-    "reaction_type": None,
-    "running":       False,   # False by default — camera stays off until /start/
+    "chemical_id":             None,
+    "chemical_type":           "neutral",
+    "reaction_type":           None,
+    "running":                 False,
+    "reaction_complete_flag":  False,   # replaces cache key "reaction_complete_flag"
 }
 
 

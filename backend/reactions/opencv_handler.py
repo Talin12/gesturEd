@@ -1,7 +1,10 @@
+# backend/reactions/opencv_handler.py
+
 import os
 import sys
 import math
 import threading
+from pathlib import Path
 import cv2
 import numpy as np
 
@@ -33,11 +36,9 @@ def get_latest_frame():
 
 def _run_lab():
     global _latest_frame
-    from django.core.cache import cache
 
     print("DEBUG: _run_lab started")
 
-    # Try cameras 0, 1, 2
     camera = None
     for idx in range(3):
         print(f"DEBUG: Trying camera index {idx}")
@@ -98,7 +99,8 @@ def _run_lab():
                 paper.target_color = list(init_color)
                 paper.wet_spots = []
 
-            chemical_type = cache.get("active_chemical_type", "neutral")
+            # Read chemical type directly from state — no cache
+            chemical_type = state.get("chemical_type", "neutral")
             liquid_color = CHEMICAL_COLORS.get(chemical_type, CHEMICAL_COLORS["neutral"])
             tube.liquid_color = liquid_color
 
@@ -129,7 +131,8 @@ def _run_lab():
                     px, py, pw, ph = paper.x, paper.y, paper.width, paper.height
                     if reacts and px <= end_x <= px + pw and py <= splash_y <= py + ph:
                         reaction_triggered = True
-                        cache.set("reaction_complete_flag", True, timeout=60)
+                        # Write reaction result directly to state — no cache
+                        state["reaction_complete_flag"] = True
 
             if reaction_triggered:
                 fh, fw = frame.shape[:2]
