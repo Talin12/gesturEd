@@ -1,5 +1,7 @@
 # backend/reactions/stream_state.py
 
+import time
+
 CHEMICALS = {
     "HCl":        {"type": "acid",    "label": "Hydrochloric Acid"},
     "H2SO4":      {"type": "acid",    "label": "Sulfuric Acid"},
@@ -22,8 +24,11 @@ state = {
     "reaction_type":          None,
     "running":                False,
     "reaction_complete_flag": False,
-    "owner":                  None,   
+    "owner":                  None,
+    "last_heartbeat":         0.0,    # unix timestamp, updated by owner's status polls
 }
+
+HEARTBEAT_TIMEOUT = 15  # seconds — lab auto-releases if owner goes silent
 
 
 def set_chemical(chemical_id):

@@ -7,7 +7,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from . import stream_state
-from .opencv_handler import get_latest_frame, start_lab, stop_lab
+from .opencv_handler import get_latest_frame, get_frame_event, start_lab, stop_lab
 
 CHEMICALS = {
     "HCl":        {"label": "Hydrochloric Acid",   "type": "acid",    "formula": "HCl"},
@@ -45,17 +45,23 @@ def _is_lab_locked_for(requester):
 
 
 def _mjpeg_generator():
-    # Loop only while the lab is running — exits gracefully when stop_lab() is called
+    frame_event = get_frame_event()
     while stream_state.state.get("running", False):
+        # Block until a new frame is written or timeout (guards against hangs)
+        frame_event.wait(timeout=1.0)
+        frame_event.clear()
+
+        if not stream_state.state.get("running", False):
+            break
+
         frame = get_latest_frame()
         if frame is None:
-            time.sleep(0.03)
             continue
+
         yield (
             b"--frame\r\n"
             b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
         )
-        time.sleep(0.03)
 
 
 # ── Reaction endpoints ────────────────────────────────────────────────────────
@@ -77,6 +83,7 @@ def start_reaction_view(request):
     stream_state.state["chemical_type"]          = "neutral"
     stream_state.state["reaction_complete_flag"] = False
     stream_state.state["owner"]                  = requester
+    stream_state.state["last_heartbeat"]         = time.time()
 
     start_lab()
 
@@ -97,6 +104,7 @@ def stop_reaction_view(request):
     stream_state.state["chemical_type"]          = "neutral"
     stream_state.state["reaction_complete_flag"] = False
     stream_state.state["owner"]                  = None
+    stream_state.state["last_heartbeat"]         = 0.0
 
     return Response({"message": "Reaction stopped."})
 
@@ -152,6 +160,12 @@ def set_chemical_view(request):
 
 @api_view(['GET'])
 def status_view(request):
+    requester = _get_session_key(request)
+
+    # Heartbeat: only the owner's polls keep the lock alive
+    if requester == stream_state.state.get("owner"):
+        stream_state.state["last_heartbeat"] = time.time()
+
     chemical_id = stream_state.state.get("chemical_id")
     chemical_meta = None
     if chemical_id and chemical_id in CHEMICALS:

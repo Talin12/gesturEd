@@ -1,3 +1,5 @@
+# opencv_modules/hand_tracker.py
+
 import cv2
 import mediapipe as mp
 import math
@@ -10,8 +12,7 @@ class HandTracker:
         self.tracking_confidence = tracking_confidence
         self.prev_angle = 0
         self.alpha = 0.2
-    
-        
+
         self.mp_hands = mp.solutions.hands
         self.hands = self.mp_hands.Hands(
             static_image_mode=self.mode,
@@ -22,11 +23,14 @@ class HandTracker:
         self.mp_draw = mp.solutions.drawing_utils
         self.results = None
 
+    def close(self):
+        """Explicitly release MediaPipe C++ resources. Call in finally block."""
+        self.hands.close()
+
     def get_hand_angle(self, frame):
         if not self.results or not self.results.multi_hand_landmarks:
             return None
 
-        # Use whichever hand is detected (works for both left and right)
         hand = self.results.multi_hand_landmarks[0]
 
         h, w, _ = frame.shape
@@ -44,8 +48,6 @@ class HandTracker:
 
         raw_angle = math.degrees(math.atan2(dy, dx))
 
-        # Tilt left = dx < 0 for right hand, but for left hand tilting right also gives dx > 0
-        # So we use abs tilt from vertical regardless of which hand
         if dx >= 0:
             target_angle = 0
         else:
@@ -59,11 +61,10 @@ class HandTracker:
 
         return smoothed
 
-
-    def is_pouring(self, angle): 
-        """Returns True if hand is tilted enough to pour""" 
+    def is_pouring(self, angle):
+        """Returns True if hand is tilted enough to pour"""
         return angle is not None and angle < 50
-    
+
     def find_hands(self, frame, draw=True):
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         self.results = self.hands.process(rgb_frame)

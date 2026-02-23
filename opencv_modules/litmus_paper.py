@@ -1,3 +1,5 @@
+# opencv_modules/litmus_paper.py
+
 import cv2
 import numpy as np
 import math
@@ -21,6 +23,12 @@ class LitmusPaper:
         self.hit_y = 0
 
     def receive_liquid(self, drop_x, drop_y, liquid_color):
+        """
+        Record a wet spot where liquid landed.
+        Does NOT shift paper hue — chemistry color changes are set externally
+        by the OpenCV loop via paper.target_color.
+        liquid_color should be a near-colorless value like (245, 245, 245).
+        """
         if self.x < drop_x < self.x + self.width and self.y < drop_y < self.y + self.height:
             self.wet_spots.append({
                 'x': drop_x,
@@ -30,11 +38,9 @@ class LitmusPaper:
                 'color': liquid_color,
                 'alpha': 1.0
             })
-            # Much stronger color shift — 40% per hit instead of 15%
+            # Only apply a subtle darkening to simulate wetness — no hue shift
             for i in range(3):
-                self.target_color[i] = int(
-                    self.target_color[i] * 0.6 + liquid_color[i] * 0.4
-                )
+                self.target_color[i] = int(self.target_color[i] * 0.85)
 
     def draw(self, frame):
         # Faster lerp toward target color so change is visible immediately
