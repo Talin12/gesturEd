@@ -2,12 +2,11 @@
 
 import time
 
-from django.http import StreamingHttpResponse
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from . import stream_state
-from .opencv_handler import get_latest_frame, get_frame_event, start_lab, stop_lab
+from .opencv_handler import start_lab, stop_lab
 
 CHEMICALS = {
     "HCl":        {"label": "Hydrochloric Acid",   "type": "acid",    "formula": "HCl"},
@@ -29,42 +28,18 @@ LAB_BUSY_MSG = "The lab is currently in use by another student."
 
 
 def _get_session_key(request):
-    """Return session key, creating the session if it doesn't exist yet."""
     if not request.session.session_key:
         request.session.create()
     return request.session.session_key
 
 
 def _is_lab_locked_for(requester):
-    """Return True if the lab is running and owned by someone else."""
     return (
         stream_state.state.get("running", False)
         and stream_state.state.get("owner") is not None
         and stream_state.state.get("owner") != requester
     )
 
-
-def _mjpeg_generator():
-    frame_event = get_frame_event()
-    while stream_state.state.get("running", False):
-        # Block until a new frame is written or timeout (guards against hangs)
-        frame_event.wait(timeout=1.0)
-        frame_event.clear()
-
-        if not stream_state.state.get("running", False):
-            break
-
-        frame = get_latest_frame()
-        if frame is None:
-            continue
-
-        yield (
-            b"--frame\r\n"
-            b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
-        )
-
-
-# ── Reaction endpoints ────────────────────────────────────────────────────────
 
 @api_view(['POST'])
 def start_reaction_view(request):
@@ -115,16 +90,6 @@ def current_reaction_view(request):
     return Response({"active_reaction": active, "is_running": active is not None})
 
 
-def video_feed_view(request):
-    # Plain Django view — StreamingHttpResponse doesn't work with DRF's Response
-    return StreamingHttpResponse(
-        _mjpeg_generator(),
-        content_type="multipart/x-mixed-replace; boundary=frame",
-    )
-
-
-# ── Chemical endpoints ────────────────────────────────────────────────────────
-
 @api_view(['GET'])
 def chemicals_view(request):
     payload = [{"id": cid, "label": m["label"]} for cid, m in CHEMICALS.items()]
@@ -156,13 +121,10 @@ def set_chemical_view(request):
     })
 
 
-# ── Status endpoint ───────────────────────────────────────────────────────────
-
 @api_view(['GET'])
 def status_view(request):
     requester = _get_session_key(request)
 
-    # Heartbeat: only the owner's polls keep the lock alive
     if requester == stream_state.state.get("owner"):
         stream_state.state["last_heartbeat"] = time.time()
 
