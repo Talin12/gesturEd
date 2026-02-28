@@ -82,13 +82,18 @@ class LabConsumer(AsyncWebsocketConsumer):
             pass
 
     async def receive(self, text_data=None, bytes_data=None):
-        if bytes_data is None:
-            return
+        try:
+            if bytes_data is None:
+                return
 
-        np_arr = np.frombuffer(bytes_data, dtype=np.uint8)
-        frame  = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        if frame is None:
-            return
+            np_arr = np.frombuffer(bytes_data, dtype=np.uint8)
+            frame  = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            if frame is None:
+                return
+        except Exception as e:
+            import traceback
+            print("CONSUMER ERROR:", traceback.format_exc())
+            raise
 
         frame = cv2.flip(frame, 1)
 
