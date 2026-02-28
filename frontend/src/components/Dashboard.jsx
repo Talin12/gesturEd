@@ -159,8 +159,8 @@ export default function Dashboard() {
     <div style={styles.page}>
       <div style={styles.header}>
         <span style={styles.eyebrow}>// Select Experiment</span>
-        <h1 style={styles.title}>Virtual Lab</h1>
-        <p style={styles.subtitle}>Choose a litmus test to begin</p>
+        <h1 style={styles.title}>GesturEd</h1>
+        <p style={styles.subtitle}>Choose a reaction to begin your virtual chemistry lab</p>
       </div>
 
       <div style={styles.grid}>
