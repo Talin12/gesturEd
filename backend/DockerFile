@@ -1,48 +1,28 @@
-# ── Stage 1: Builder ──────────────────────────────────────────────────────────
-FROM python:3.11-slim AS builder
-
-WORKDIR /app
-
-# System build deps
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt .
-RUN pip install --upgrade pip \
- && pip install --prefix=/install --no-cache-dir -r requirements.txt
-
-
-# ── Stage 2: Runtime ──────────────────────────────────────────────────────────
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# ── OpenCV + MediaPipe runtime system libraries ────────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # OpenCV headless runtime
+    build-essential \
+    gcc \
     libgl1 \
     libglib2.0-0 \
     libsm6 \
     libxrender1 \
     libxext6 \
     libgomp1 \
-    # MediaPipe needs these
     libgstreamer1.0-0 \
     libgstreamer-plugins-base1.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy installed Python packages from builder
-COPY --from=builder /install /usr/local
+COPY requirements.txt .
+RUN pip install --upgrade pip \
+ && pip install --no-cache-dir -r requirements.txt
 
-# Copy project source
 COPY . .
 
-# Collect static files at build time
 RUN python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
-# Daphne serves both HTTP and WebSocket over the same port
 CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
