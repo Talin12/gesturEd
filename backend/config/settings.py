@@ -1,17 +1,26 @@
-# backend/config/settings.py
-
 from pathlib import Path
 from corsheaders.defaults import default_headers
 import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-r%6+har%j4k(+-ti1l2e*8j)t&iq!ybzx8f9df9*0b0u)#5u-z')
+# ── Core ───────────────────────────────────────────────────────────────────────
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['*']
+# ── Hosts ──────────────────────────────────────────────────────────────────────
+# Render injects RENDER_EXTERNAL_HOSTNAME automatically on all services.
+# Add any additional hosts via DJANGO_EXTRA_HOSTS (comma-separated).
+_render_host = os.getenv('RENDER_EXTERNAL_HOSTNAME', '')
+_extra_hosts_raw = os.getenv('DJANGO_EXTRA_HOSTS', '')
+_extra_hosts = [h.strip() for h in _extra_hosts_raw.split(',') if h.strip()]
 
+ALLOWED_HOSTS = ['localhost', '127.0.0.1'] + (
+    [_render_host] if _render_host else []
+) + _extra_hosts
+
+# ── Apps ───────────────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -21,7 +30,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    'channels',          # <-- NEW
+    'channels',
     'accounts',
     'reactions',
 ]
@@ -53,25 +62,33 @@ TEMPLATES = [
     },
 ]
 
-# ASGI is now the primary application entry point
+# ── ASGI / Channels ────────────────────────────────────────────────────────────
 ASGI_APPLICATION = 'config.asgi.application'
 
-# Channel layers — use Redis in production, in-memory for local dev
+REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379')
+
 CHANNEL_LAYERS = {
     'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
-        # For production on Railway/Render, swap to:
-        # 'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        # 'CONFIG': {'hosts': [os.getenv('REDIS_URL', 'redis://localhost:6379')]},
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [REDIS_URL],
+        },
     }
 }
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# ── Database ───────────────────────────────────────────────────────────────────
+# Render managed Postgres sets DATABASE_URL; fall back to SQLite for local dev.
+_db_url = os.getenv('DATABASE_URL')
+if _db_url:
+    import dj_database_url  
+    DATABASES = {'default': dj_database_url.config(default=_db_url, conn_max_age=600)}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -85,27 +102,43 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+# ── Static files ───────────────────────────────────────────────────────────────
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ── CORS / CSRF ────────────────────────────────────────────────────────────────
+# Base origins always allowed (local dev)
 _BASE_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:5173",
+    "http://localhost:4173",
     "http://127.0.0.1:5173",
 ]
 
-_extra = os.getenv("DJANGO_EXTRA_ORIGINS", "")
-_extra_origins = [o.strip() for o in _extra.split(",") if o.strip()]
+# Production frontend URL — set FRONTEND_URL on Render, e.g. https://myapp-frontend.onrender.com
+_frontend_url = os.getenv('FRONTEND_URL', '')
 
-CORS_ALLOWED_ORIGINS = _BASE_ORIGINS + _extra_origins
+# Any additional origins (comma-separated) via DJANGO_EXTRA_ORIGINS
+_extra_raw = os.getenv('DJANGO_EXTRA_ORIGINS', '')
+_extra_origins = [o.strip() for o in _extra_raw.split(',') if o.strip()]
+
+_all_origins = _BASE_ORIGINS + (
+    [_frontend_url] if _frontend_url else []
+) + _extra_origins
+
+CORS_ALLOWED_ORIGINS = _all_origins
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_HEADERS = list(default_headers) + ["ngrok-skip-browser-warning"]
+CORS_ALLOW_HEADERS = list(default_headers) + ['ngrok-skip-browser-warning']
 
-CSRF_TRUSTED_ORIGINS = _BASE_ORIGINS + _extra_origins
+CSRF_TRUSTED_ORIGINS = _all_origins
 
-SESSION_COOKIE_SAMESITE = "None"
+# ── Cookies ────────────────────────────────────────────────────────────────────
+SESSION_COOKIE_SAMESITE = 'None'
 SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SAMESITE = "None"
+CSRF_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SECURE = True
 
 REST_FRAMEWORK = {

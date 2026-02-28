@@ -1,11 +1,14 @@
-// frontend/vite.config.js
-// Add this proxy block so local dev WS requests reach the Django backend
-
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
+
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+  },
+
   server: {
     proxy: {
       '/api': {
@@ -19,4 +22,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
